@@ -8,6 +8,6 @@ The memory map is detailedin IOTProtect.h
 
 Note : 
 
-       SSL is disabled, due perfomance impact this had.
+       SSL is disabled, due perfomances.
        Also, SSL is a bit overkill for a project like this.
 
