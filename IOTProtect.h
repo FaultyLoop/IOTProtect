@@ -10,7 +10,7 @@
 #define IOTPROTECT_COMMAND_FLAG
 
 #define FLAG_COMMAND_NULNUL 0b00000000 
-//                          MODE            NORMAL           ; ALTERNATIVE 
+//                          MODE                    NORMAL           ; ALTERNATIVE 
 #define FLAG_COMMAND_RSTHLP 0b1000000000000000 //!< NORM :     RESET ; ALT :      HELP
 #define FLAG_COMMAND_EXTSYN 0b0100000000000000 //!< NORM :      EXIT ; ALT :      SYNC
 #define FLAG_COMMAND_SENCLS 0b0010000000000000 //!< NORM :      SEND ; ALT :     CLEAR
@@ -150,11 +150,12 @@
 #ifndef IOTPROTECT_TRIGGER
 #define IOTPROTECT_TRIGGER
 
-#define FLAG_TRIGGER_GTHN 0b0001 //!< UNSET : NONE     ; SET : GRATER THAN * if equal is set and less -> <=
-#define FLAG_TRIGGER_LTHN 0b0010 //!< UNSET : NONE     ; SET : LESS THAN   * if equal is set and grater is set -> >=
-#define FLAG_TRIGGER_EQTY 0b0100 //!< UNSET : NONE     ; SET : EQUAL
-#define FLAG_TRIGGER_XNOT 0b1000 //!< UNSET : NONE     ; SET : NOT
-#define FLAG_TRIGGER_DISD 0b1111 //!< UNSET : NONE     ; SET : DISABLED
+#define FLAG_TRIGGER_NONE 0b0000 //!< UNSET : NONE     ; SET : NONE        * ignored
+#define FLAG_TRIGGER_GTHN 0b0001 //!< UNSET : NONE     ; SET : GRATER THAN * check a < b
+#define FLAG_TRIGGER_LTHN 0b0010 //!< UNSET : NONE     ; SET : LESS THAN   * check a > b
+#define FLAG_TRIGGER_EQTY 0b0100 //!< UNSET : NONE     ; SET : EQUAL       * check a == b
+#define FLAG_TRIGGER_XNOT 0b1000 //!< UNSET : NONE     ; SET : NOT         * negate check result
+#define FLAG_TRIGGER_DISD 0b1111 //!< UNSET : NONE     ; SET : DISABLED    * check disabled
  
 #endif //IOTPROTECT_TRIGGER
 
@@ -176,7 +177,7 @@
 #define FLAG_STATUS_DPSET 0b000000000000000001000000 //!< Deepsl Enabled (Enable DeepSleep Behaviour NOTE : DEFAULT IS ECO MODE (NO FLAG)       )
 #define FLAG_STATUS_MMSET 0b000000000000000000100000 //!< Memlog Service (Enable Message log WARNING : ONLY IN CASE OF MESSAGE FAILURE          )
 #define FLAG_STATUS_SLSET 0b000000000000000000010000 //!< SSL    Service (Enable SSL    Interface WARNING : TELNET INTERFACE DISABLED           )
-#define FLAG_STATUS_TNSET 0b000000000000000000001000 //!< Telnet Service (Enable Telnet Interface WARNING : RAW BYTES STREAM                    )
+#define FLAG_STATUS_TNSET 0b000000000000000000001000 //!< Telnet Service (Enable Telnet Interface WARNING : RAW BYTES STREAM (UTF-8)            )
 #define FLAG_STATUS_SRSET 0b000000000000000000000100 //!< Serial Service (Enable Serial Interface                                               )
 #define FLAG_STATUS_TRSET 0b000000000000000000000010 //!< Trigger    Set
 #define FLAG_STATUS_WAKEP 0b000000000000000000000001 //!< Wakup      Set
@@ -186,8 +187,10 @@
 #ifndef IOTPROTECT_XDATA
 #define IOTPROTECT_XDATA
 
+// Define Available Pins
 const uint8_t  PINMAP[8] PROGMEM = {D1, D2, D3, D4, D5, D6, D7, D8};
 
+// Define Reserved Area
 const uint16_t EEPROM_AREA_CONF[2] PROGMEM = {EEPROM_HEAD_CONF, EEPROM_TAIL_CONF}; //!< Area Config
 const uint16_t EEPROM_AREA_CRC[2]  PROGMEM = {EEPROM_HEAD_CRC,  EEPROM_TAIL_CRC }; //!< Area CRC
 const uint16_t EEPROM_AREA_LOWS[2] PROGMEM = {EEPROM_HEAD_LOWS, EEPROM_TAIL_LOWS}; //!< Area Low Size
@@ -199,6 +202,7 @@ const uint16_t EEPROM_AREA_EVNT[2] PROGMEM = {EEPROM_HEAD_EVNT, EEPROM_TAIL_EVNT
 const uint16_t EEPROM_AREA_BFSD[2] PROGMEM = {EEPROM_HEAD_BFSD, EEPROM_TAIL_BFSD}; //!< Area Backup Field
 const uint16_t EEPROM_AREA_FING[2] PROGMEM = {EEPROM_HEAD_FING, EEPROM_TAIL_FING}; //!< Area Finger print
 
+// Define Basic Messages
 const char STR_MSG_ENABLED[ ] PROGMEM = "ENABLED ";
 const char STR_MSG_DISABLE[ ] PROGMEM = "DISABLED";
 const char STR_MSG_SUCCESS[ ] PROGMEM = "SUCCESS";
@@ -219,6 +223,7 @@ const char STR_CMD_OPTPORT[ ] PROGMEM = "maintenance;service;secure;";
 const char STR_CMD_HSECOND[ ] PROGMEM = "backup;i2c;sensors;pin;deepsleep;hybrid;secure;mqtt;serial;telnet;wifi;mqsecure;";
 //         UNBOUND   OPTIONS  : 
 
+// Define SSL Certificate /!\ DO NOT USE THE ONE PROVIDED !
 const char STR_SSL_CERT[ ] PROGMEM = R"EOF(
 -----BEGIN CERTIFICATE-----
 MIID5DCCAsygAwIBAgIJAJqSN+SdX6L3MA0GCSqGSIb3DQEBCwUAMIGGMQswCQYD
@@ -244,6 +249,7 @@ YPnTCbJGAusPQ3NTGSkyQHBFRjVBFISb/g3LwI80OpDWrHGnW9ear9nSZFvyAzQz
 dklLifm9bgI8Olj26qROz+dS+jb+EAuGXuqlFibAlb63cQcDs+IBZg==
 -----END CERTIFICATE-----)EOF";
 
+// Define SSL Private Key /!\ DO NOT USE THE ONE PROVIDED
 const char STR_SSL_PKEY[ ] PROGMEM = R"EOF(
 -----BEGIN PRIVATE KEY-----
 MIIEwAIBADANBgkqhkiG9w0BAQEFAASCBKowggSmAgEAAoIBAQDOUhNZTPRjIkZK
@@ -291,15 +297,15 @@ const char STR_MSG_WELCOME[ ] PROGMEM ="\n\r\
 ║░░░░░▒▒▓░▒░▓▒▒░░░░░▓▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒║\n\r\
 ║░░░░░░░▒▓▓▓▒░░░░░░░▓▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒║\n\r\
 ╬═════════════════════════════════════════════════════════════════════════════╬\n\r\
-VERSION: 0.2 BETA © CLÉMENT RÉMY\n\r";
+VERSION: 0.2 BETA 🄯 CLÉMENT RÉMY\n\r";
 /*1316 bytes used (Can be reduced to 329 bytes via the folowing CHARSET "\0░▒▓█▐▌═║╬\n\r" (exclusion of the last line)
- *The following algorithme can encode the data:
+ *The following algorithm can encode the data:
  *  vars:
  *    CHARSET (str)
  *    CHARMAP (str)
  *    TRANSFORMED (str)
  *  begin:
- *    determine the number of bit needed to encode via CHARSET as BITPERCHAR
+ *    determine the number of bits needed to encode via CHARSET as BITPERCHAR
  *    set the index for TRANSFORMED to 0
  *    for each char in CHARMAP:
  *      get the char referenced in CHARSET as CURRENTCHARREF
@@ -312,11 +318,12 @@ VERSION: 0.2 BETA © CLÉMENT RÉMY\n\r";
  *          add 1 to the index of TRANSFORMED
  *          do a leftshift with assigment into LASTCHARREF current index
  *    return TRANSFORMED
- *   notes:
- *    This algorithme exchange tow constraint : The CPU load and a low Memory (EEPROM/RAM).
- *    Since the ESP8266 has a better CPU and more memory than a basic Arduino, the performance wasen't significant.
- *    Addeding the fact that this is only used by the WELCOME logo, the integation is more.
- *    This is just a possibility.
+ 
+ *   Notes:
+ *    This algorithm exchange tow constraint : The CPU load and Memory (EEPROM/RAM).
+ *    Since the ESP8266 has a better CPU and more memory than a basic Arduino, the performances weren't significant.
+ *    Adding the fact that this is only used by the WELCOME logo, the integration is more.
+ *    /!\ NOT IMPLEMENTED
  */
 
 #endif //IOTPROTECT_XDATA
@@ -352,19 +359,19 @@ class IOTProtect {
     } _event;
 
     typedef struct _trigger {
-      char topic[25]      ;
-      uint8_t pin     =  0;
-      uint8_t trap    =  0;
-      uint16_t valpri =  0;
-      uint16_t valsec =  0;
-      uint8_t alttime = 10;
+      char topic[25]      ;//Topic to send message for trigger
+      uint8_t pin     =  0;//Pin(s) read for trigger check                1 bit = 1 pin Id 
+      uint8_t trap    =  0;//Trigger check    (2 available, 4 bit each)   see FLAG_TRIGGER_* in memory map
+      uint16_t valpri =  0;//Primary value    (first check)               converted 16 bit float
+      uint16_t valsec =  0;//Secondary value  (second check, if enabled)  converted 16 bit float
+      uint8_t alttime = 10;//Delay between read                           in µ seconds
     } _trigger;
 
     typedef struct _session {
       String stream = "";       //Session Command Stream
       uint32_t status;          //Session Status
       WiFiClient client;        //Telnet/SSL Session Client
-      bool operator==(_session &session){return (uint64_t) (this) == (uint64_t) (&session);}
+      bool operator==(_session &session){return (uint64_t) (this) == (uint64_t) (&session);}//Session Check
     } _session;
     
     float pinbuf[8];
