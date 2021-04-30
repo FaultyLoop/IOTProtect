@@ -9,57 +9,93 @@
 #include <SHA3.h>
 #include <Wire.h>
 
+/* WARNING : Missing commentary bellow, please be aware that this is how i work whenever i am alone on something*/
 OneWire oneWire(0);
 DallasTemperature sensor(&oneWire);
 
 IOTProtect::IOTProtect(){
-  EEPROM.begin(EEPROM_SIZE_FULL);
-  sensor.begin();
-  Wire.begin(D4, D5);
-  addEvent(FLAG_EVENT_EFBOOT);
-  delay(750);
+  EEPROM.begin(EEPROM_SIZE_FULL);//Init EEPROM (full-size: 4KB)
+  sensor.begin();                //Init Sensors
+  Wire.begin(D4, D5);            //Init Wire Protocol
+  addEvent(FLAG_EVENT_EFBOOT);   //Add Boot Event
+  delay(750);                    //Delay (sensor warmup)
 }
 
-/***** WORK IN PROGRESS *****/
+/***** WORK IN PROGRESS *****/ //<-- Ignore that, it is just an indicator
 
 void IOTProtect::begin() {
  //Hardware Button Check
-  const bool aquiresystem = takesystem();
+  const bool aquiresystem = takesystem();//Reserve System
   bool manual = false;
   
+  //Initial System Check
   checkCRC();
+  
+  //No flag, force a soft RESET FLAG_STATUS_RESET
   if (!getFlag()){addFlag(FLAG_STATUS_RESET,false);}
-  if(!hasFlag(FLAG_STATUS_RESET)){//Interity check : OK
-    delFlag(FLAG_STATUS_SAFEM|FLAG_STATUS_ADMIN|FLAG_STATUS_CONFG|FLAG_STATUS_WAKEP,false);//Removing High Status Flag
-    if (!aquiresystem){addFlag(FLAG_STATUS_SAFEM,false);}//LAST SESSION SYS WAS WRITING
-    update();//Update (for enabling services)
-    if (digitalRead(0) == LOW){//Button Flash Pressed
-      addFlag(FLAG_STATUS_SRSET,false);//Enable Serial (telnet cannot push a button)
-      println("SETTING CONFIG MODE TO MANUAL",ALL);//Warn user
+ 
+  //Interity check : OK
+  if(!hasFlag(FLAG_STATUS_RESET)){
+    
+    //Removing High Status Flag
+    delFlag(FLAG_STATUS_SAFEM|FLAG_STATUS_ADMIN|FLAG_STATUS_CONFG|FLAG_STATUS_WAKEP,false);
+    
+    //LAST SESSION SYS WAS WRITING
+    if (!aquiresystem){addFlag(FLAG_STATUS_SAFEM,false);}
+    
+    //Update (for enabling services)
+    update();
+    
+    //Button Flash Pressed, disable automatic behavior (for this boot sequence)
+    if (digitalRead(0) == LOW){
+      
+      //Enable Serial (telnet cannot push a button)
+      addFlag(FLAG_STATUS_SRSET,false);
+      
+      //Warn user
+      println("SETTING CONFIG MODE TO MANUAL",ALL);
       delay(1500);
-      if (digitalRead(0) == LOW){addFlag(FLAG_STATUS_RESET);}//FACTORY RESET
-      else {addFlag(FLAG_STATUS_CONFG|FLAG_STATUS_SRSET);manual = true;}//MANUAL OVERRIDE
-    } else {checkConf();}//Check Config (if failed, depend of the config if set)
+      
+      //After 1.5 sec, if button keep pressed, do HARD_RESET, else open parametred interface
+      if (digitalRead(0) == LOW){addFlag(FLAG_STATUS_RESET);}
+      else {addFlag(FLAG_STATUS_CONFG|FLAG_STATUS_SRSET);manual = true;}
+    } else {checkConf();}//Check Config
   }
   
+  //If reset flag set, reset
   if (hasFlag(FLAG_STATUS_RESET)){reset();}
   else {
-    update();//Update (ensure services)
+    //Update (required to sensor 'keep-alive')
+    update();
+    
+    //Only if set to speak openly
     print("BOOT MODE : ",ALL);
+    
     if (!manual && ((ESP.getResetInfoPtr()->reason == REASON_DEEP_SLEEP_AWAKE)|| hasFlag(FLAG_STATUS_DPSET))){
+      //Set automatic behavior flags
+      //HYBRID : can wake anytime (CPU running at low spec)
+      //DEEPSLEEP : wake only with interrupt (CPU Timer only)
       addFlag(FLAG_STATUS_WAKEP,false);
       delFlag(FLAG_STATUS_CONFG,false);
       println(String(hasFlag(FLAG_STATUS_HDSET) ? "HYBRID":"DEEPSLEEP"),ALL);
+      
     } else if (manual || hasFlag(FLAG_STATUS_CONFG)){
+      //Config Failure mean data corruption
       addFlag(FLAG_STATUS_TNSET|FLAG_STATUS_SRSET,false);
       println("CONFIG "+String(manual ? "(MANUAL)":"(FAILURE)"),ALL);
+      
     } else {println("TIMED",ALL);}
   }
+  
+  //Free reserved
   dropsystem();
-  update();//Update (ensure interfaces)
+  
+  //Update (required to sensor 'keep-alive')
+  update();
 }
 
 bool IOTProtect::setFingerPrint(String &fingerprint){
+  //SSL Related Stuff
   bool ret = true;
   uint8_t buffer[EEPROM_SIZE_CFNG];
   memset(buffer,0,EEPROM_SIZE_CFNG);
@@ -77,6 +113,7 @@ bool IOTProtect::setFingerPrint(String &fingerprint){
 }
 
 String IOTProtect::getFingerPrint(){
+  //SSL Related Stuff 
   String finger;
   uint8_t codex[EEPROM_SIZE_CFNG];
   getEEPROM(codex,EEPROM_SIZE_CFNG,EEPROM_ADDR_FPRT);
@@ -89,6 +126,7 @@ String IOTProtect::getFingerPrint(){
 }
 
 void IOTProtect::loop() {
+  //Main loop
   if (hasFlag(FLAG_STATUS_TNSET)){
     bool addClient = false;
     WiFiClient _local;
@@ -164,15 +202,33 @@ void IOTProtect::loop() {
 }
 
 void IOTProtect::reset() {
+  //Reset Memory
   uint8_t hash[EEPROM_SIZE_CSTR];
+  
+  //take system
   takesystem();
-  addFlag(FLAG_STATUS_SRSET|FLAG_STATUS_TNSET|FLAG_STATUS_RESET);delay(25);
+  addFlag(FLAG_STATUS_SRSET|FLAG_STATUS_TNSET|FLAG_STATUS_RESET);
+  
+  //Ensure system flag set
+  delay(25);
+  
+  //Reste Init
   println("INITIALISING RESET",ALL);
   if (setEEPROM(NULL,NULL,NULL)){
     WiFi.begin("","");
+    //FLAG_STATUS_SYSET CHECK (if set, system was not taken), when it happend this is bad (easiest solution : reflash)
     if (takesystem()){println("WARNING CONFLICT : SYSTEM FLAG RESERVED",ALL);}
+   
+    //Clearing Events Memory
     println("CLEARING MEMORY : "+(String(addFlag(FLAG_STATUS_SRSET|FLAG_STATUS_TNSET) ? STR_MSG_SUCCESS:STR_MSG_FAILURE)),ALL);
+    
+    //Add EEPROM_RESET Event
     addEvent(FLAG_EVENT_EFRST_);
+    
+    //RESET Specific EEPROM address
+    //The memory map (how it is done) ensure that, if we are in a reset
+    //and the device lose power, the secure information are still there
+    //that ensure that security related info cannot (i hope) be accessed
     println("RESETING MQTT INDENT : "+String(setString(EEPROM_ADDR_MIDN,String(DEFAULT_IDENT)) ? STR_MSG_SUCCESS:STR_MSG_FAILURE),ALL);
     println("RESETING PORT TELNET : "+String(setLow(DEFAULT_SMPO,EEPROM_ADDR_SMPO) ? STR_MSG_SUCCESS:STR_MSG_FAILURE),ALL);
     println("RESETING PORT TIMEOUT: "+String(setLow(DEFAULT_MTOT,EEPROM_ADDR_MTOT) ? STR_MSG_SUCCESS:STR_MSG_FAILURE),ALL);
@@ -188,6 +244,7 @@ void IOTProtect::reset() {
 }
 
 bool IOTProtect::clear(uint16_t area[2]) {
+  //Clear an area of memory
   bool aquiresystem = takesystem();
   bool ret = setEEPROM(NULL,area[1]-area[0],area[0]);
   if (aquiresystem){dropsystem();}
@@ -195,6 +252,7 @@ bool IOTProtect::clear(uint16_t area[2]) {
 }
 
 void IOTProtect::print(String message,IOTProtect::_session *session) {
+  //Send message to session 
   if (hasFlag(FLAG_STATUS_SRSET) && (session == NULL)){Serial.print(message);}
   if (hasFlag(FLAG_STATUS_TNSET) && (session != NULL)){
     if (session->client.connected()){
@@ -205,6 +263,7 @@ void IOTProtect::print(String message,IOTProtect::_session *session) {
 }
 
 void IOTProtect::print(String message,interfaces id) {
+  //Send message to specific session or all session if ALL specified
   if (hasFlag(FLAG_STATUS_SRSET) && (id == SERIAL_0 || id == ALL)){Serial.print(message);}
   if (hasFlag(FLAG_STATUS_TNSET)){
     for (uint8_t i(0);i<8;i++){
@@ -222,11 +281,13 @@ void IOTProtect::println(String message,interfaces id) {print(message+"\n\r",id)
 void IOTProtect::println(String message,IOTProtect::_session *session) {print(message+"\n\r",session);}
 
 uint8_t IOTProtect::match(const String &string,const String parser,String &matching) {
+  //Command Parsing and resolution (only used when using interface)
   if (string == ""){return FLAG_MATCH_STRVOID;}
   matching = "";
   String matchcmd = parser;
   float oldscore = 60.0;
   uint8_t errorno = FLAG_MATCH_INVALID;
+  
   while (matchcmd != ""){
     String sentence, lockerror = string, statment = matchcmd.substring(0,matchcmd.indexOf(";"));
     float score = 100;
@@ -255,6 +316,7 @@ uint8_t IOTProtect::match(const String &string,const String parser,String &match
 
 
 void IOTProtect::addBackup(IOTProtect::_backup backup) {
+  //Backup status (ensure message is saved, if the connection is lost)
   const bool aquired = takesystem();
   uint8_t id = getLow(EEPROM_ADDR_BKCN);
   addEvent(FLAG_EVENT_EFBACK|FLAG_EVENT_ECWRT|((id<=getMax(BACKUP))&&(setEEPROM((uint8_t *)&backup,sizeof(_backup),EEPROM_ADDR_BFSD+(sizeof(_backup)*id))) ? 0:FLAG_EVENT_ECFAL));
@@ -263,6 +325,7 @@ void IOTProtect::addBackup(IOTProtect::_backup backup) {
 }
 
 IOTProtect::_backup IOTProtect::getBackup(uint8_t id) {
+  //Get a backup
   _backup _local;
   if (id <= getMax(BACKUP)){getEEPROM((uint8_t *) &_local,sizeof(_backup),EEPROM_ADDR_BFSD+(sizeof(_backup)*id));}
   return _local;
@@ -820,6 +883,7 @@ void IOTProtect::command(String &stream,IOTProtect::_session *session) {
 /***** VERIFIED : FUNCTIONNAL *****/
 
 void IOTProtect::addEvent(uint8_t event) {
+  //Add event in memory
   if (eventlock){return;}
   eventlock = true;
   _event _local;
