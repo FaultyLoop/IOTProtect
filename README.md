@@ -7,6 +7,7 @@ The memory map is detailedin IOTProtect.h
 /!\ DO NOT USE THE SSL CERTIFIATE PROVIDED AS SAMPLE
 
 Note : 
+
        SSL is disabled, due perfomance impact this had.
        Also, SSL is a bit overkill for a project like this.
 
