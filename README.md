@@ -6,18 +6,18 @@ The ESP8266 use the MQTT Protocol and the included WiFi chip to transmit data.
 And because of me, I did *a bit* over-complicated the project (for my side at leat).
 A Android MQTT Client was also done (not present here tho).
 
-This project some third-party libs, listed bellow :
-
-CRC32                 : Arduino Lib
-DallasTemperature     : Arduino Lib
-EEPROM                : Arduino Lib
-ESP8266WiFi           : Arduino Lib
-MQTT                  : Arduino Lib
-OneWire               : Arduino Lib
-SHA3                  : Arduino Lib (?)
-SparkFunLSM6DS3       : https://github.com/sparkfun/SparkFun_LSM6DS3_Arduino_Library
-Wire                  : Arduino Lib 
-
+This project some third-party libs, listed bellow :<br>
+<br>
+CRC32                 : Arduino Lib<br>
+DallasTemperature     : Arduino Lib<br>
+EEPROM                : Arduino Lib<br>
+ESP8266WiFi           : Arduino Lib<br>
+MQTT                  : Arduino Lib<br>
+OneWire               : Arduino Lib<br>
+SHA3                  : Arduino Lib (?)<br>
+SparkFunLSM6DS3       : https://github.com/sparkfun/SparkFun_LSM6DS3_Arduino_Library<br>
+Wire                  : Arduino Lib <br>
+<br>
 
 The memory map is detailedin IOTProtect.h
 
